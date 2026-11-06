@@ -21,6 +21,12 @@
   lksecapp / persist / dsp / limits / dip / syscfg / mcfg / apdp / msadp / dpo /
   vbmeta`）。删了以后 lk2nd 会在 1–2 秒内崩。
 - **`vbmeta_b` 必须是 64 KiB 的原厂镜像**。写 256 字节的空 vbmeta 会让整个槽校验失败。
+- **B 槽会被 ABL 静默否掉**：它在“解析 boot 镜像”阶段就判死，**不报错**，唯一现象是
+  上电约 **15 秒后自动回到 A 槽**。三个硬条件：总大小精确 `25,180,160`；
+  kernel 区偏移 `0x2C` 必须指向第一个 appended DTB 且 DTB 连续排列；
+  `vbmeta_b` 必须是合法原厂内容（擦成全零会触发 `INVALID_METADATA`，直接作废 B 槽）。
+- **先解决“看得见”**：没有串口/网络时只能靠“15 秒回 A”猜；lk2nd 的 oem log 和
+  USB ACM 控制台才让人第一次看到它走到哪一步。
 - **引导分区必须是真实 GPT 分区，内容从分区起始 LBA 开始**。lk2nd 只挂载分区本身，
   读根目录的 `/extlinux/extlinux.conf`，不会去分区内部找 MBR 或偏移。
 - **槽状态存在 GPT 条目的属性位里，不在 `misc`**。任何 `edl wf` 整盘写入都会清零。
