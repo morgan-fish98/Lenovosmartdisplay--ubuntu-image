@@ -790,6 +790,10 @@ ssh root@<设备IP> 'cd / && tar -xpf /tmp/userdata.tar && systemctl restart thi
 - **postmarketOS**：msm8953 内核、initramfs、lk2nd 生态；以及 FelixKa 的设备包。
 - **lk2nd**、**msm8953-mainline** 的维护者。
 - 小智（xiaozhi）语音助手的开源实现。
+- **OpenCode**：AI 编码助手，协助整理命令、脚本和文档。
+- **DeepSeek**：OpenCode 使用的模型。
+
+> 所有刷机、寄存器调试和验证都在真机上执行；AI 协助的是命令、脚本和文档的整理。
 
 刷机工具是 [bkerler/edl](https://github.com/bkerler/edl)。
 本项目是个人项目，与联想、摩托罗拉、高通、postmarketOS 均无隶属关系。

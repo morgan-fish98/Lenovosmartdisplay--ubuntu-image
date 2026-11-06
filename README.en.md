@@ -115,6 +115,11 @@ justhalfbit does it: git files are limited to 100 MB, release assets to 2 GB.
   `prebuilt/lk2nd.img`, bootstrap images and the original port.
 - **postmarketOS**, **lk2nd**, **msm8953-mainline** and FelixKa's device package.
 - The open-source xiaozhi voice assistant.
+- **OpenCode** — AI coding agent; helped organize the commands, scripts and docs.
+- **DeepSeek** — the model used by OpenCode.
+
+> All flashing, register poking and verification was done on real hardware; the
+> AI helped with commands, scripts and documentation.
 
 Not affiliated with Lenovo, Motorola, Qualcomm or postmarketOS.
 Flashing is at your own risk.
