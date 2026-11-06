@@ -7,15 +7,67 @@
 
 本项目基于 [justhalfbit/thinksmart-ubuntu-image](https://github.com/justhalfbit/thinksmart-ubuntu-image)
 和 [rickx/ubuntu-thinksmart](https://github.com/rickx/ubuntu-thinksmart)
-（Ubuntu 24.04 + postmarketOS 内核 6.19），并补上了这块 **4GB eMMC 的 8 英寸机型**
-特有的问题：
+（Ubuntu 24.04 + postmarketOS 内核 6.19）。
 
-- 语音客户端、网关、中文界面、唤醒词「小麦小麦」；
-- 显示：面板 ±5.5V（LAB/IBB）升压、WLED 背光、weston 等 DRM 就绪；
-- 音频：ADSP 固件加载时序、喇叭/麦克风；
-- WiFi：ath10k SDIO 首次 probe 超时自动重绑定；
-- 触摸：Himax HX83100A 与 1.8V 电源轨；
-- 开机自动化：autoboot lk2nd + 去掉 initramfs 调试 shell。
+**注意：jhb / rickx 的镜像和刷机流程是给 ThinkSmart View（CD-18781Y，8GB eMMC）的。
+这台是 Smart Display 8（amber / SD-8501F，4GB eMMC）——屏幕、面板、触摸 IC、分区表、
+电源轨都不一样。** 我们在这台机器上把下面这些坑逐个填了：
+
+### 引导 / 分区
+
+- **ABL 只认 25,180,160 字节的 lk2nd 镜像**。自编译的 300KB 小镜像会让 ABL 连续
+  重试 7 次，然后把槽标成不可启动（`current-slot=INVALID`）。
+- **不能删那 21 个小分区**（`devinfo / keystore / config / cmnlib / keymaster /
+  lksecapp / persist / dsp / limits / dip / syscfg / mcfg / apdp / msadp / dpo /
+  vbmeta`）。删了以后 lk2nd 会在 1–2 秒内崩。
+- **`vbmeta_b` 必须是 64 KiB 的原厂镜像**。写 256 字节的空 vbmeta 会让整个槽校验失败。
+- **引导分区必须是真实 GPT 分区，内容从分区起始 LBA 开始**。lk2nd 只挂载分区本身，
+  读根目录的 `/extlinux/extlinux.conf`，不会去分区内部找 MBR 或偏移。
+- **槽状态存在 GPT 条目的属性位里，不在 `misc`**。任何 `edl wf` 整盘写入都会清零。
+
+### 显示（黑屏 / 灰亮 / 背光）
+
+- **背光亮但全黑、或一片灰亮**：面板 ±5.5V（LAB = `vsp`、IBB = `vsn`）根本没有升压。
+  主线的 `qcom-labibb-regulator` 只写 ENABLE，不写 `MODULE_RDY`
+  （LAB `0xde45` bit7、IBB `0xdc45` bit7），所以 `VREG_OK` 永远是 0。
+- **背光不亮**：WLED 缺 `ILIM_OVERWRITE`（`0xd84c` bit7，Android 亮屏时是 `0x8b`），
+  而且从全关 0→1 会触发**短路保护锁存**（`0xd808` bit2），要一次干净的 0→max 亮度沿。
+- **背光使能还经过 PMIC2 的 MPP3**（`0xa246` bit7），主线不会替你打开。
+- **weston 比 DRM 先启动**：DSI 面板探测很晚（本机约 74 秒），weston 早就
+  `no drm device found` 退出了，但 systemd 还显示服务 active。
+- **`no encoder found for crtc 0`**、往 `/dev/fb0` 写全白但屏幕只是灰亮——
+  weston 走 DRM plane，fbdev 不代表真实画面。
+- **PMIC/SPMI 故障**（`pmic-spmi ... error -5`）会让 DRM 和背光整个消失；
+  必须 DC + USB 同时拔掉 60 秒、只插 DC 30 秒、再插 USB 才能恢复。屏幕黑不代表系统挂了。
+
+### 音频
+
+- **没有声卡**（`no soundcards`）：`adsp.mdt` 是软链接，内核探测 `remoteproc0` 时
+  固件分区还没挂上，ADSP 起不来，QDSP6 声卡就不会创建。
+- **固件分区号写死**：旧脚本用 `p12/p27`，新布局里 `dsp_a` 是 `p36`、`persist` 是 `p35`，
+  要按 GPT 标签挂载。
+- **不要直接碰 `hw:0,x`**：PortAudio 探测硬件 PCM 会把 QDSP6 弄卡死，只能重启；
+  音频统一走 PipeWire。
+
+### WiFi
+
+- **没有 `wlan0`**：`ath10k_sdio` 首次 probe 超时（-110），之后不会自动重试。
+  SDIO 卡比 WCN 芯片先枚举，需要重新 `bind`。
+
+### 触摸
+
+- **触摸没反应**：这块屏是 **Himax HX83100A @ I²C 0x48**，不是同一份 DTS 里的
+  FocalTech FT8201 @ 0x38；内核自带的 `himax_hx83112b.ko` 支持 hx83100a。
+- **芯片不上电**：Himax 驱动自己不申请稳压器，`l5`（1.8V）必须 `regulator-always-on`。
+
+### 开机 / 系统
+
+- **每次上电都要电脑**：原 lk2nd 编译时带 `LK2ND_FORCE_FASTBOOT=1`，initramfs 又带
+  `pmos.debug-shell`，要发两次 `continue`。现在改成 autoboot lk2nd，装完修复后去掉
+  debug-shell，插电就进系统。
+- **4GB 空间很紧**：根分区 2.9GiB，系统占 2.5GiB，默认只剩约 270MB；
+  客户端更新前要留空间（`docs/10-storage.md`）。
+- **上游功能保留**：语音客户端、网关、中文界面、唤醒词「小麦小麦」都还在。
 
 > ⚠️ 刷机会清掉原来的 Android / Teams 系统，改分区表，**失去保修**。
 > 第一次刷之前**一定先备份尾部分区（或整盘）**，这是以后回到原厂的唯一办法。

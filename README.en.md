@@ -8,14 +8,38 @@ into a local voice assistant: it boots straight into the assistant UI, wakes on
 
 Built on top of [justhalfbit/thinksmart-ubuntu-image](https://github.com/justhalfbit/thinksmart-ubuntu-image)
 and [rickx/ubuntu-thinksmart](https://github.com/rickx/ubuntu-thinksmart)
-(Ubuntu 24.04 + postmarketOS 6.19 kernel), plus the fixes this 8-inch 4 GB
-variant needs:
+(Ubuntu 24.04 + postmarketOS 6.19 kernel).
 
-- display: LAB/IBB panel rails, WLED backlight, weston/DRM ordering;
-- audio: ADSP firmware timing, speaker and microphone;
-- WiFi: ath10k SDIO probe retry;
-- touch: Himax HX83100A and its 1.8 V rail;
-- boot: autoboot lk2nd, no initramfs debug shell in the end state.
+**jhb's and rickx's images target the ThinkSmart View (CD-18781Y, 8 GB eMMC).
+This is the Smart Display 8 (amber / SD-8501F, 4 GB eMMC): different panel,
+touch controller, partition layout and power rails.** The pitfalls fixed here:
+
+- **Boot/partitions**: the stock ABL only accepts a 25,180,160-byte lk2nd boot
+  image (a self-built 300 KB image makes it retry 7 times and marks the slot
+  unbootable); the 21 small partitions (`devinfo`, `keystore`, … `dpo`, `vbmeta`)
+  must exist or lk2nd crashes within 1–2 s; `vbmeta_b` must be the 64 KiB stock
+  image; slot state lives in the GPT attribute bits, not `misc`.
+- **Display**: backlight on but black/grey — the ±5.5 V panel rails (LAB/IBB)
+  never ramp because the mainline labibb driver omits `MODULE_RDY`
+  (`0xde45`/`0xdc45` bit 7); WLED lacks `ILIM_OVERWRITE` (`0xd84c` bit 7) and
+  latches short-circuit protection on 0→1 (`0xd808` bit 2); MPP3 gates the
+  backlight enable; weston starts before the DSI panel probes and dies with
+  `no drm device found`; a PMIC/SPMI failure kills DRM/backlight until a full
+  DC+USB power cycle.
+- **Audio**: no sound card because `adsp.mdt` is a symlink and the ADSP probes
+  before the firmware partition is mounted; the old loader hard-coded `p12/p27`
+  instead of mounting by GPT label; direct `hw:0,x` access wedges the QDSP6 —
+  audio goes through PipeWire only.
+- **WiFi**: `ath10k_sdio` first probe times out (-110) and is never retried;
+  the SDIO function has to be rebound.
+- **Touch**: the panel is a Himax HX83100A at I²C `0x48`, not the FocalTech
+  FT8201 at `0x38` from the same vendor DTS; the `l5` 1.8 V rail must be
+  `regulator-always-on` because the driver does not request it.
+- **Boot UX**: stock lk2nd is built with `LK2ND_FORCE_FASTBOOT=1` and the
+  initramfs has `pmos.debug-shell`, so every power-on needed two `continue`s;
+  now it autoboots.
+- **Storage**: 2.9 GiB root partition, ~270 MB free by default — see
+  `docs/10-storage.md`.
 
 > ⚠️ Flashing replaces Android/Teams, rewrites the partition table and voids
 > the warranty. **Back up the tail partitions (or the whole eMMC) first.**
