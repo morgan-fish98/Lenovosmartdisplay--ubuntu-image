@@ -1,0 +1,15 @@
+[Unit]
+Description=Amber SD-8501F panel rails + backlight bring-up
+Documentation=file:///usr/local/sbin/amber-display-fix
+After=local-fs.target systemd-udev-settle.service
+Wants=systemd-udev-settle.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/sbin/amber-display-fix
+Restart=no
+TimeoutStartSec=0
+Nice=10
+
+[Install]
+WantedBy=multi-user.target

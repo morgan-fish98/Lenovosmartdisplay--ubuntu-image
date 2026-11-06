@@ -1,0 +1,13 @@
+[Unit]
+Description=Start the ADSP remoteproc (QDSP6 audio) once firmware is available
+After=local-fs.target msm-firmware-loader.service
+Before=thinksmart-client.service
+Wants=msm-firmware-loader.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/amber-adsp-start
+
+[Install]
+WantedBy=multi-user.target

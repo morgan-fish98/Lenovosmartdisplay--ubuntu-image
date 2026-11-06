@@ -1,0 +1,27 @@
+[Unit]
+Description=Mount Qualcomm firmware partitions and create symlinks
+DefaultDependencies=no
+Before=sysinit.target
+After=systemd-udevd.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+# Resolve the partitions by GPT label: the numbers changed when the pmOS
+# layout was written over the stock GPT (dsp is p36, persist is p35 now).
+ExecStart=/bin/bash -c '\
+  mkdir -p /run/msm-firmware-loader/mnt/modem /run/msm-firmware-loader/mnt/dsp /run/msm-firmware-loader/mnt/persist; \
+  M=$(blkid -t PARTLABEL=modem_a -o device 2>/dev/null | head -1); \
+  D=$(blkid -t PARTLABEL=dsp_a -o device 2>/dev/null | head -1); \
+  P=$(blkid -t PARTLABEL=persist -o device 2>/dev/null | head -1); \
+  [ -n "$M" ] && mount -o ro "$M" /run/msm-firmware-loader/mnt/modem 2>/dev/null; \
+  [ -n "$D" ] && mount -o ro "$D" /run/msm-firmware-loader/mnt/dsp 2>/dev/null; \
+  [ -n "$P" ] && mount -o ro "$P" /run/msm-firmware-loader/mnt/persist 2>/dev/null; \
+  for dir in /run/msm-firmware-loader/mnt/modem/image /run/msm-firmware-loader/mnt/dsp; do \
+    [ -d "$dir" ] || continue; \
+    find "$dir" -maxdepth 1 -type f -exec ln -sf {} /lib/firmware/ \; 2>/dev/null; \
+  done; \
+  exit 0'
+
+[Install]
+WantedBy=sysinit.target

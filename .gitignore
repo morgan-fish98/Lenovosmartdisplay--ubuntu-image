@@ -1,0 +1,40 @@
+# 大镜像走 GitHub Releases，不进 git
+dist/
+*.img.xz
+*.xz
+
+# 备份/整盘镜像永远不进仓库
+backup*/
+emmc_full*
+stock-full*
+tsroot/
+*.img
+*.bin
+*.mbn
+*.elf
+*.dtb
+*.dtbo
+*.ko
+*.tar.gz
+*.zip
+*.7z
+
+# 但发布所需的小文件要保留
+!images/*.img
+!images/*.bin
+!images/*.dtb
+!packages/kernel-modules/*.ko
+!packages/client/*.tar.gz
+
+# 工具产物
+__pycache__/
+*.pyc
+*.o
+*.d
+*.cmd
+
+# 编辑器/系统
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

@@ -1,0 +1,13 @@
+[Unit]
+Description=Recover the ath10k SDIO WiFi card if its first probe timed out
+After=local-fs.target systemd-modules-load.service
+Before=NetworkManager.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/amber-wifi-fix
+TimeoutStartSec=0
+
+[Install]
+WantedBy=multi-user.target
