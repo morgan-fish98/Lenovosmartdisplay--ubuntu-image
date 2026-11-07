@@ -46,6 +46,13 @@
 如果两次尝试都失败，**停止并报告**：当前 USB ID、串口最后 20 行、`edl printgpt` 输出。
 不要反复重刷同一组命令。
 
+## 系统层（底层）更新
+
+- **永远不要**把上游的 `thinksmart-system-*.tar.gz` 直接 `system-apply` 到 amber；
+  它是 CD-18781Y（View）的，会覆盖 amber 的 kiosk/背光/ALSA 补丁。
+- 必须先按 `docs/13-system-layer.md` 重新为 amber 打包，再发布/安装。
+- client（`/opt/thinksmart/client/*`）可以正常在线更新。
+
 ## 输出风格
 
 - 每步告诉人类：**现在做什么、预期看到什么、失败了怎么办**。

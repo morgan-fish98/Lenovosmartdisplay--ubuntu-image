@@ -741,6 +741,12 @@ ssh root@<设备IP> 'cd / && tar -xpf /tmp/userdata.tar && systemctl restart thi
   走 HTTPS + 逐文件 sha256，装坏自动回滚。
   0.1.3 起页面才有更新入口；更早的版本用
   `thinksmart-update install <版本>`。
+- **⚠️ 系统层 / 底层（system layer）不能直接装上游包**。
+  JHB 的 `thinksmart-system-0.2.0.tar.gz` 是给 **CD-18781Y（View）** 的，
+  会覆盖我们为 amber 定制的 `thinksmart-kiosk.py`、背光标志、`99-cd18781y-alsa.lua` 等；
+  自检在 amber 上失败会回滚，看起来就是“更新不了”。
+  **这类更新必须由 AI / 维护者重新为 amber 打包**，步骤和冲突清单见
+  [`docs/13-system-layer.md`](docs/13-system-layer.md)。
 - **网关**：`http://<设备IP>:16688/admin` 侧边栏「更新网关」。
 - **系统软件包**：`sudo apt update && sudo apt upgrade` 可以照常用。
 - **系统镜像**：按路线 B 重刷，先做第 4 节备份。
