@@ -1,0 +1,37 @@
+name: build-ov5693
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies (LLVM 21, kbuild deps)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bc bison flex libssl-dev libelf-dev lz4 zstd \
+            python3 perl cpio rsync wget gnupg ca-certificates
+          wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key \
+            | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/llvm.gpg
+          echo "deb http://apt.llvm.org/noble/ llvm-toolchain-noble-21 main" \
+            | sudo tee /etc/apt/sources.list.d/llvm21.list >/dev/null
+          sudo apt-get update
+          sudo apt-get install -y clang-21 lld-21 llvm-21
+
+      - name: Build kernel module
+        run: sh build.sh
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ov5693-6.19.5-msm8953
+          path: |
+            ov5693.ko
+            ov5693.ko.zst
+            ov5693.modinfo
+          if-no-files-found: error
